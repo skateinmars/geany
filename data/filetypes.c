@@ -9,7 +9,7 @@ number=number_1
 word=keyword_1
 word2=keyword_2
 string=string_1
-character=string_1
+character=character
 uuid=other
 preprocessor=preprocessor
 operator=operator
@@ -23,6 +23,7 @@ commentdockeyworderror=comment_doc_keyword_error
 globalclass=class
 # """verbatim"""
 tripleverbatim=string_2
+hashquotedstring=string_2
 
 [keywords]
 # all items must be in one line

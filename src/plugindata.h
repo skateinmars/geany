@@ -55,7 +55,7 @@ G_BEGIN_DECLS
  * @warning You should not test for values below 200 as previously
  * @c GEANY_API_VERSION was defined as an enum value, not a macro.
  */
-#define GEANY_API_VERSION 215
+#define GEANY_API_VERSION 216
 
 /** The Application Binary Interface (ABI) version, incremented whenever
  * existing fields in the plugin data types have to be changed or reordered.
@@ -265,7 +265,7 @@ typedef struct GeanyFunctions
 	struct MsgWinFuncs			*p_msgwindow;
 	struct EncodingFuncs		*p_encodings;		/**< See encodings.h */
 	struct KeybindingFuncs		*p_keybindings;		/**< See keybindings.h */
-	struct TagManagerFuncs		*p_tm;				/**< See tagmanager/include */
+	struct TagManagerFuncs		*p_tm;				/**< See tagmanager/src */
 	struct SearchFuncs			*p_search;			/**< See search.h */
 	struct HighlightingFuncs	*p_highlighting;	/**< See highlighting.h */
 	struct FiletypeFuncs		*p_filetypes;		/**< See filetypes.h */
