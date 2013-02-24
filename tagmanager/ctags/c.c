@@ -383,6 +383,7 @@ static kindOption ValaKinds [] = {
 	{ TRUE,  's', "struct",     "structure names"},
 };
 
+/* Note: some keyword aliases are added in initializeDParser, initializeValaParser */
 static const keywordDesc KeywordTable [] = {
 	/*                                              C++                  */
 	/*                                       ANSI C  |  C# Java          */
@@ -392,7 +393,6 @@ static const keywordDesc KeywordTable [] = {
 	/* keyword          keyword ID                |  |  |  |  |  |  |    */
 	{ "__attribute__",  KEYWORD_ATTRIBUTE,      { 1, 1, 1, 0, 0, 0, 1 } },
 	{ "abstract",       KEYWORD_ABSTRACT,       { 0, 0, 1, 1, 0, 1, 1 } },
-	{ "alias",          KEYWORD_TYPEDEF,        { 0, 0, 0, 0, 0, 0, 1 } }, /* handle like typedef */
 	{ "bad_state",      KEYWORD_BAD_STATE,      { 0, 0, 0, 0, 1, 0, 0 } },
 	{ "bad_trans",      KEYWORD_BAD_TRANS,      { 0, 0, 0, 0, 1, 0, 0 } },
 	{ "bind",           KEYWORD_BIND,           { 0, 0, 0, 0, 1, 0, 0 } },
@@ -415,15 +415,13 @@ static const keywordDesc KeywordTable [] = {
 	{ "delete",         KEYWORD_DELETE,         { 0, 1, 0, 0, 0, 1, 1 } },
 	{ "double",         KEYWORD_DOUBLE,         { 1, 1, 1, 1, 0, 1, 1 } },
 	{ "else",           KEYWORD_ELSE,           { 1, 1, 0, 1, 0, 1, 1 } },
-	{ "ensures",        KEYWORD_ATTRIBUTE,      { 0, 0, 0, 0, 0, 1, 0 } },	/* ignore */
 	{ "enum",           KEYWORD_ENUM,           { 1, 1, 1, 1, 1, 1, 1 } },
-	{ "errordomain",    KEYWORD_ENUM,           { 0, 0, 0, 0, 0, 1, 0 } }, /* errordomain behaves like enum */
 	{ "event",          KEYWORD_EVENT,          { 0, 0, 1, 0, 1, 0, 0 } },
 	{ "explicit",       KEYWORD_EXPLICIT,       { 0, 1, 1, 0, 0, 0, 1 } },
 	{ "extends",        KEYWORD_EXTENDS,        { 0, 0, 0, 1, 1, 0, 0 } },
 	{ "extern",         KEYWORD_EXTERN,         { 1, 1, 1, 0, 1, 1, 0 } },
 	{ "extern",         KEYWORD_NAMESPACE,      { 0, 0, 0, 0, 0, 0, 1 } },	/* parse block */
-	{ "final",          KEYWORD_FINAL,          { 0, 0, 0, 1, 0, 0, 1 } },
+	{ "final",          KEYWORD_FINAL,          { 0, 1, 0, 1, 0, 0, 1 } },
 	{ "finally",        KEYWORD_FINALLY,        { 0, 0, 0, 0, 0, 1, 1 } },
 	{ "float",          KEYWORD_FLOAT,          { 1, 1, 1, 1, 0, 1, 1 } },
 	{ "for",            KEYWORD_FOR,            { 1, 1, 1, 1, 0, 1, 1 } },
@@ -469,7 +467,6 @@ static const keywordDesc KeywordTable [] = {
 	{ "public",         KEYWORD_PUBLIC,         { 0, 1, 1, 1, 1, 1, 1 } },
 	{ "ref",            KEYWORD_REF,            { 0, 0, 0, 0, 0, 1, 1 } },
 	{ "register",       KEYWORD_REGISTER,       { 1, 1, 0, 0, 0, 0, 0 } },
-	{ "requires",       KEYWORD_ATTRIBUTE,      { 0, 0, 0, 0, 0, 1, 0 } },	/* ignore */
 	{ "return",         KEYWORD_RETURN,         { 1, 1, 1, 1, 0, 1, 1 } },
 	{ "set",            KEYWORD_SET,            { 0, 0, 0, 0, 0, 1, 0 } },
 	{ "shadow",         KEYWORD_SHADOW,         { 0, 0, 0, 0, 1, 0, 0 } },
@@ -498,11 +495,9 @@ static const keywordDesc KeywordTable [] = {
 	{ "uint",           KEYWORD_UINT,           { 0, 0, 1, 0, 0, 1, 1 } },
 	{ "ulong",          KEYWORD_ULONG,          { 0, 0, 1, 0, 0, 1, 1 } },
 	{ "union",          KEYWORD_UNION,          { 1, 1, 0, 0, 0, 0, 1 } },
-	{ "unittest",       KEYWORD_BODY,           { 0, 0, 0, 0, 0, 0, 1 } },	/* ignore */
 	{ "unsigned",       KEYWORD_UNSIGNED,       { 1, 1, 1, 0, 0, 0, 1 } },
 	{ "ushort",         KEYWORD_USHORT,         { 0, 0, 1, 0, 0, 1, 1 } },
 	{ "using",          KEYWORD_USING,          { 0, 1, 1, 0, 0, 1, 0 } },
-	{ "version",        KEYWORD_NAMESPACE,      { 0, 0, 0, 0, 0, 0, 1 } },	/* parse block */
 	{ "virtual",        KEYWORD_VIRTUAL,        { 0, 1, 1, 0, 1, 1, 0 } },
 	{ "void",           KEYWORD_VOID,           { 1, 1, 1, 1, 1, 1, 1 } },
 	{ "volatile",       KEYWORD_VOLATILE,       { 1, 1, 1, 1, 0, 0, 1 } },
@@ -740,7 +735,7 @@ static const char *keywordString (const keywordId keyword)
 	return name;
 }
 
-static void __unused__ pt (tokenInfo *const token)
+static void UNUSED pt (tokenInfo *const token)
 {
 	if (isType (token, TOKEN_NAME))
 		printf("type: %-12s: %-13s   line: %lu\n",
@@ -755,7 +750,7 @@ static void __unused__ pt (tokenInfo *const token)
 			   tokenString (token->type), token->lineNumber);
 }
 
-static void __unused__ ps (statementInfo *const st)
+static void UNUSED ps (statementInfo *const st)
 {
 	unsigned int i;
 	printf("scope: %s   decl: %s   gotName: %s   gotParenName: %s\n",
@@ -1191,6 +1186,10 @@ static void addOtherFields (tagEntryInfo* const tag, const tagType type,
 	{
 		default: break;
 
+		case TAG_NAMESPACE:
+			/* D nested template block */
+			if (!isLanguage(Lang_d))
+				break;
 		case TAG_CLASS:
 		case TAG_ENUM:
 		case TAG_ENUMERATOR:
@@ -1621,6 +1620,8 @@ static void skipToMatch (const char *const pair)
 	const unsigned long inputLineNumber = getInputLineNumber ();
 	int matchLevel = 1;
 	int c = '\0';
+	if (isLanguage(Lang_d) && pair[0] == '<')
+		return; /* ignore e.g. Foo!(x < 2) */
 	while (matchLevel > 0  &&  (c = cppGetc ()) != EOF)
 	{
 		if (c == begin)
@@ -1968,6 +1969,12 @@ static void readParents (statementInfo *const st, const int qualifier)
 	deleteToken (token);
 }
 
+static void checkIsClassEnum (statementInfo *const st, const declType decl)
+{
+	if (! isLanguage (Lang_cpp) || st->declaration != DECL_ENUM)
+		st->declaration = decl;
+}
+
 static void processToken (tokenInfo *const token, statementInfo *const st)
 {
 	switch (token->keyword)		/* is it a reserved word? */
@@ -1979,7 +1986,7 @@ static void processToken (tokenInfo *const token, statementInfo *const st)
 		case KEYWORD_ATTRIBUTE:	skipParens (); initToken (token);	break;
 		case KEYWORD_CATCH:		skipParens (); skipBraces ();		break;
 		case KEYWORD_CHAR:		st->declaration = DECL_BASE;		break;
-		case KEYWORD_CLASS:		st->declaration = DECL_CLASS;		break;
+		case KEYWORD_CLASS:		checkIsClassEnum (st, DECL_CLASS);	break;
 		case KEYWORD_CONST:		st->declaration = DECL_BASE;		break;
 		case KEYWORD_DOUBLE:	st->declaration = DECL_BASE;		break;
 		case KEYWORD_ENUM:		st->declaration = DECL_ENUM;		break;
@@ -2003,7 +2010,7 @@ static void processToken (tokenInfo *const token, statementInfo *const st)
 		case KEYWORD_PUBLIC:	setAccess (st, ACCESS_PUBLIC);		break;
 		case KEYWORD_SHORT:		st->declaration = DECL_BASE;		break;
 		case KEYWORD_SIGNED:	st->declaration = DECL_BASE;		break;
-		case KEYWORD_STRUCT:	st->declaration = DECL_STRUCT;		break;
+		case KEYWORD_STRUCT:	checkIsClassEnum (st, DECL_STRUCT);	break;
 		case KEYWORD_THROWS:	discardTypeList (token);			break;
 		case KEYWORD_TYPEDEF:	st->scope	= SCOPE_TYPEDEF;		break;
 		case KEYWORD_UNION:		st->declaration = DECL_UNION;		break;
@@ -2363,12 +2370,6 @@ static int parseParens (statementInfo *const st, parenInfo *const info)
 	{
 		int c = skipToNonWhite ();
 
-		if (isLanguage(Lang_d) && c == '!')
-		{	/* template instantiation */
-			info->isNameCandidate = FALSE;
-			info->isKnrParamList = FALSE;
-		}
-		else
 		switch (c)
 		{
 			case '&':
@@ -2479,6 +2480,11 @@ static int parseParens (statementInfo *const st, parenInfo *const info)
 						info->isKnrParamList = FALSE;
 						info->isNameCandidate = FALSE;
 					}
+				}
+				else if (isLanguage(Lang_d) && c == '!')
+				{ /* D template instantiation */
+					info->isNameCandidate = FALSE;
+					info->isKnrParamList = FALSE;
 				}
 				else
 				{
@@ -2610,11 +2616,10 @@ static void processColon (statementInfo *const st)
 	else
 	{
 		cppUngetc (c);
-		if ((((isLanguage (Lang_cpp) &&
+		if (((isLanguage (Lang_cpp) &&
 				(st->declaration == DECL_CLASS || st->declaration == DECL_STRUCT)) ||
-		    isLanguage (Lang_csharp) || isLanguage (Lang_vala))  &&
-			inheritingDeclaration (st->declaration)) ||
-			isLanguage (Lang_d))
+			isLanguage (Lang_csharp) || isLanguage (Lang_d) || isLanguage (Lang_vala)) &&
+			inheritingDeclaration (st->declaration))
 		{
 			readParents (st, ':');
 		}
@@ -2623,6 +2628,15 @@ static void processColon (statementInfo *const st)
 			c = skipToOneOf (",;");
 			if (c == ',')
 				setToken (st, TOKEN_COMMA);
+			else if (c == ';')
+				setToken (st, TOKEN_SEMICOLON);
+		}
+		else if (isLanguage (Lang_cpp) && st->declaration == DECL_ENUM)
+		{
+			/* skip enum's base type */
+			c = skipToOneOf ("{;");
+			if (c == '{')
+				setToken (st, TOKEN_BRACE_OPEN);
 			else if (c == ';')
 				setToken (st, TOKEN_SEMICOLON);
 		}
@@ -2956,6 +2970,13 @@ static void tagCheck (statementInfo *const st)
 						}
 					}
 				}
+				/* C++ 11 allows class <name> final { ... } */
+				else if (isLanguage (Lang_cpp) && isType (prev, TOKEN_KEYWORD) &&
+						 prev->keyword == KEYWORD_FINAL && isType(prev2, TOKEN_NAME))
+				{
+					name_token = (tokenInfo *)prev2;
+					copyToken (st->blockName, name_token);
+				}
 				else if (isLanguage (Lang_csharp))
 					makeTag (prev, st, FALSE, TAG_PROPERTY);
 				else
@@ -3122,10 +3143,10 @@ static void initializeJavaParser (const langType language)
 
 static void initializeDParser (const langType language)
 {
-	/* keyword aliases - some are for parsing like const(Type), some are just
+	/* treat these like const - some are for parsing like const(Type), some are just
 	 * function attributes */
-	char *const_aliases[] = {"immutable", "nothrow", "pure", "shared", NULL};
-	char **s;
+	const char *const_aliases[] = {"immutable", "nothrow", "pure", "shared", NULL};
+	const char **s;
 
 	Lang_d = language;
 	buildKeywordHash (language, 6);
@@ -3134,6 +3155,12 @@ static void initializeDParser (const langType language)
 	{
 		addKeyword (*s, language, KEYWORD_CONST);
 	}
+	/* other keyword aliases */
+	addKeyword ("alias", language, KEYWORD_TYPEDEF);
+	/* skip 'static assert(...)' like 'static if (...)' */
+	addKeyword ("assert", language, KEYWORD_IF);
+	addKeyword ("unittest", language, KEYWORD_BODY);	/* ignore */
+	addKeyword ("version", language, KEYWORD_NAMESPACE);	/* parse block */
 }
 
 static void initializeGLSLParser (const langType language)
@@ -3158,6 +3185,11 @@ static void initializeValaParser (const langType language)
 {
 	Lang_vala = language;
 	buildKeywordHash (language, 5);
+
+	/* keyword aliases */
+	addKeyword ("ensures", language, KEYWORD_ATTRIBUTE);	/* ignore */
+	addKeyword ("errordomain", language, KEYWORD_ENUM); /* looks like enum */
+	addKeyword ("requires", language, KEYWORD_ATTRIBUTE);	/* ignore */
 }
 
 extern parserDefinition* CParser (void)

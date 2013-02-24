@@ -18,6 +18,7 @@
  */
 #include "general.h"	/* must always come first */
 #include <ctype.h>	/* to define isalpha () */
+#include <string.h>
 #include <setjmp.h>
 #include <mio/mio.h>
 #ifdef DEBUG
@@ -54,7 +55,6 @@ typedef enum eKeywordId {
 	KEYWORD_NONE = -1,
 	KEYWORD_function,
 	KEYWORD_capital_function,
-	KEYWORD_object,
 	KEYWORD_capital_object,
 	KEYWORD_prototype,
 	KEYWORD_var,
@@ -97,7 +97,8 @@ typedef enum eTokenType {
 	TOKEN_EQUAL_SIGN,
 	TOKEN_FORWARD_SLASH,
 	TOKEN_OPEN_SQUARE,
-	TOKEN_CLOSE_SQUARE
+	TOKEN_CLOSE_SQUARE,
+	TOKEN_REGEXP
 } tokenType;
 
 typedef struct sTokenInfo {
@@ -114,6 +115,8 @@ typedef struct sTokenInfo {
 /*
  *	DATA DEFINITIONS
  */
+
+static tokenType LastTokenType;
 
 static langType Lang_js;
 
@@ -140,7 +143,6 @@ static const keywordDesc JsKeywordTable [] = {
 	/* keyword		keyword ID */
 	{ "function",	KEYWORD_function			},
 	{ "Function",	KEYWORD_capital_function	},
-	{ "object",		KEYWORD_object				},
 	{ "Object",		KEYWORD_capital_object		},
 	{ "prototype",	KEYWORD_prototype			},
 	{ "var",		KEYWORD_var					},
@@ -212,12 +214,23 @@ static void deleteToken (tokenInfo *const token)
  *	 Tag generation functions
  */
 
-static void makeConstTag (tokenInfo *const token, const jsKind kind)
+static void makeJsTag (tokenInfo *const token, const jsKind kind)
 {
 	if (JsKinds [kind].enabled && ! token->ignoreTag )
 	{
-		const char *const name = vStringValue (token->string);
+		const char *name = vStringValue (token->string);
+		vString *fullscope = vStringNewCopy (token->scope);
+		const char *p;
 		tagEntryInfo e;
+
+		if ((p = strrchr (name, '.')) != NULL)
+		{
+			if (vStringLength (fullscope) > 0)
+				vStringPut (fullscope, '.');
+			vStringNCatS (fullscope, name, p - name);
+			name = p + 1;
+		}
+
 		initTagEntry (&e, name);
 
 		e.lineNumber   = token->lineNumber;
@@ -225,31 +238,22 @@ static void makeConstTag (tokenInfo *const token, const jsKind kind)
 		e.kindName	   = JsKinds [kind].name;
 		e.kind		   = JsKinds [kind].letter;
 
-		makeTagEntry (&e);
-	}
-}
-
-static void makeJsTag (tokenInfo *const token, const jsKind kind)
-{
-	vString *	fulltag;
-
-	if (JsKinds [kind].enabled && ! token->ignoreTag )
-	{
-		/*
-		 * If a scope has been added to the token, change the token
-		 * string to include the scope when making the tag.
-		 */
-		if ( vStringLength(token->scope) > 0 )
+		if ( vStringLength(fullscope) > 0 )
 		{
-			fulltag = vStringNew ();
-			vStringCopy(fulltag, token->scope);
-			vStringCatS (fulltag, ".");
-			vStringCatS (fulltag, vStringValue(token->string));
-			vStringTerminate(fulltag);
-			vStringCopy(token->string, fulltag);
-			vStringDelete (fulltag);
+			jsKind parent_kind = JSTAG_CLASS;
+
+			/* if we're creating a function (and not a method),
+			 * guess we're inside another function */
+			if (kind == JSTAG_FUNCTION)
+				parent_kind = JSTAG_FUNCTION;
+
+			e.extensionFields.scope[0] = JsKinds [parent_kind].name;
+			e.extensionFields.scope[1] = vStringValue (fullscope);
 		}
-		makeConstTag (token, kind);
+
+		makeTagEntry (&e);
+
+		vStringDelete (fullscope);
 	}
 }
 
@@ -342,6 +346,32 @@ static void parseString (vString *const string, const int delimiter)
 	vStringTerminate (string);
 }
 
+static void parseRegExp (void)
+{
+	int c;
+	boolean in_range = FALSE;
+
+	do
+	{
+		c = fileGetc ();
+		if (! in_range && c == '/')
+		{
+			do /* skip flags */
+			{
+				c = fileGetc ();
+			} while (isalpha (c));
+			fileUngetc (c);
+			break;
+		}
+		else if (c == '\\')
+			c = fileGetc (); /* skip next character */
+		else if (c == '[')
+			in_range = TRUE;
+		else if (c == ']')
+			in_range = FALSE;
+	} while (c != EOF);
+}
+
 /*	Read a C identifier beginning with "firstChar" and places it into
  *	"name".
  */
@@ -381,10 +411,11 @@ getNextChar:
 	do
 	{
 		c = fileGetc ();
-		token->lineNumber   = getSourceLineNumber ();
-		token->filePosition = getInputFilePosition ();
 	}
 	while (c == '\t'  ||  c == ' ' ||  c == '\n');
+
+	token->lineNumber   = getSourceLineNumber ();
+	token->filePosition = getInputFilePosition ();
 
 	switch (c)
 	{
@@ -424,8 +455,26 @@ getNextChar:
 					  if ( (d != '*') &&		/* is this the start of a comment? */
 							  (d != '/') )		/* is a one line comment? */
 					  {
-						  token->type = TOKEN_FORWARD_SLASH;
 						  fileUngetc (d);
+						  switch (LastTokenType)
+						  {
+							  case TOKEN_CHARACTER:
+							  case TOKEN_KEYWORD:
+							  case TOKEN_IDENTIFIER:
+							  case TOKEN_STRING:
+							  case TOKEN_CLOSE_CURLY:
+							  case TOKEN_CLOSE_PAREN:
+							  case TOKEN_CLOSE_SQUARE:
+								  token->type = TOKEN_FORWARD_SLASH;
+								  break;
+
+							  default:
+								  token->type = TOKEN_REGEXP;
+								  parseRegExp ();
+								  token->lineNumber = getSourceLineNumber ();
+								  token->filePosition = getInputFilePosition ();
+								  break;
+						  }
 					  }
 					  else
 					  {
@@ -467,6 +516,8 @@ getNextChar:
 				  }
 				  break;
 	}
+
+	LastTokenType = token->type;
 }
 
 static void copyToken (tokenInfo *const dest, tokenInfo *const src)
@@ -586,6 +637,7 @@ static void findCmdTerm (tokenInfo *const token)
 		if ( isType (token, TOKEN_OPEN_CURLY))
 		{
 			parseBlock (token, token);
+			readToken (token);
 		}
 		else if ( isType (token, TOKEN_OPEN_PAREN) )
 		{
@@ -801,36 +853,9 @@ static boolean parseIf (tokenInfo *const token)
 	{
 		findCmdTerm (token);
 
-		/*
-		 * The IF could be followed by an ELSE statement.
-		 * This too could have two formats, a curly braced
-		 * multiline section, or another single line.
-		 */
-
-		if (isType (token, TOKEN_CLOSE_CURLY))
-		{
-			/*
-			 * This statement did not have a line terminator.
-			 */
-			read_next_token = FALSE;
-		}
-		else
-		{
-			readToken (token);
-
-			if (isType (token, TOKEN_CLOSE_CURLY))
-			{
-				/*
-				* This statement did not have a line terminator.
-				*/
-				read_next_token = FALSE;
-			}
-			else
-			{
-				if (isKeyword (token, KEYWORD_else))
-					read_next_token = parseIf (token);
-			}
-		}
+		/* The next token should only be read if this statement had its own
+		 * terminator */
+		read_next_token = isType (token, TOKEN_SEMICOLON);
 	}
 	return read_next_token;
 }
@@ -850,17 +875,14 @@ static void parseFunction (tokenInfo *const token)
 	addToScope(name, token->scope);
 
 	readToken (token);
-	if (isType (token, TOKEN_PERIOD))
+	while (isType (token, TOKEN_PERIOD))
 	{
-		do
+		readToken (token);
+		if ( isKeyword(token, KEYWORD_NONE) )
 		{
+			addContext (name, token);
 			readToken (token);
-			if ( isKeyword(token, KEYWORD_NONE) )
-			{
-				addContext (name, token);
-				readToken (token);
-			}
-		} while (isType (token, TOKEN_PERIOD));
+		}
 	}
 
 	if ( isType (token, TOKEN_OPEN_PAREN) )
@@ -1034,15 +1056,42 @@ static boolean parseMethods (tokenInfo *const token, tokenInfo *const class)
 				}
 				else
 				{
+						vString * saveScope = vStringNew ();
+						boolean has_child_methods = FALSE;
+
+						/* skip whatever is the value */
+						while (! isType (token, TOKEN_COMMA) &&
+						       ! isType (token, TOKEN_CLOSE_CURLY))
+						{
+							if (isType (token, TOKEN_OPEN_CURLY))
+							{
+								vStringCopy (saveScope, token->scope);
+								addToScope (token, class->string);
+								has_child_methods = parseMethods (token, name);
+								vStringCopy (token->scope, saveScope);
+								readToken (token);
+							}
+							else if (isType (token, TOKEN_OPEN_PAREN))
+							{
+								skipArgumentList (token);
+							}
+							else if (isType (token, TOKEN_OPEN_SQUARE))
+							{
+								skipArrayList (token);
+							}
+							else
+							{
+								readToken (token);
+							}
+						}
+						vStringDelete (saveScope);
+
 						has_methods = TRUE;
 						addToScope (name, class->string);
-						makeJsTag (name, JSTAG_PROPERTY);
-
-						/*
-						 * Read the next token, if a comma
-						 * we must loop again
-						 */
-						readToken (token);
+						if (has_child_methods)
+							makeJsTag (name, JSTAG_CLASS);
+						else
+							makeJsTag (name, JSTAG_PROPERTY);
 				}
 			}
 		}
@@ -1060,6 +1109,7 @@ static boolean parseStatement (tokenInfo *const token, boolean is_inside_class)
 {
 	tokenInfo *const name = newToken ();
 	tokenInfo *const secondary_name = newToken ();
+	tokenInfo *const method_body_token = newToken ();
 	vString * saveScope = vStringNew ();
 	boolean is_class = FALSE;
 	boolean is_terminated = TRUE;
@@ -1162,7 +1212,7 @@ static boolean parseStatement (tokenInfo *const token, boolean is_inside_class)
 					 * CASE 1
 					 * Specified function name: "build"
 					 *     BindAgent.prototype.build = function( mode ) {
-					 *     	  ignore everything within this function
+					 *     	  maybe parse nested functions
 					 *     }
 					 *
 					 * CASE 2
@@ -1190,20 +1240,24 @@ static boolean parseStatement (tokenInfo *const token, boolean is_inside_class)
 						{
 							vStringCopy(saveScope, token->scope);
 							addToScope(token, name->string);
-
 							makeJsTag (token, JSTAG_METHOD);
-							/*
-							 * We can read until the end of the block / statement.
-							 * We need to correctly parse any nested blocks, but
-							 * we do NOT want to create any tags based on what is
-							 * within the blocks.
-							 */
-							token->ignoreTag = TRUE;
-							/*
-							 * Find to the end of the statement
-							 */
-							findCmdTerm (token);
-							token->ignoreTag = FALSE;
+
+							readToken (method_body_token);
+							vStringCopy (method_body_token->scope, token->scope);
+
+							while (! ( isType (method_body_token, TOKEN_SEMICOLON) ||
+							           isType (method_body_token, TOKEN_CLOSE_CURLY) ||
+							           isType (method_body_token, TOKEN_OPEN_CURLY)) )
+							{
+								if ( isType (method_body_token, TOKEN_OPEN_PAREN) )
+									skipArgumentList(method_body_token);
+								else
+									readToken (method_body_token);
+							}
+
+							if ( isType (method_body_token, TOKEN_OPEN_CURLY))
+								parseBlock (method_body_token, token);
+
 							is_terminated = TRUE;
 							goto cleanUp;
 						}
@@ -1368,6 +1422,8 @@ static boolean parseStatement (tokenInfo *const token, boolean is_inside_class)
 				makeJsTag (name, JSTAG_METHOD);
 				parseBlock (token, name);
 			}
+			else if (isType (token, TOKEN_CLOSE_CURLY))
+				is_terminated = FALSE;
 		}
 		else if (isType (token, TOKEN_OPEN_CURLY))
 		{
@@ -1381,7 +1437,9 @@ static boolean parseStatement (tokenInfo *const token, boolean is_inside_class)
 			 *     var z = {};
 			 */
 			has_methods = parseMethods(token, name);
-			if ( ! has_methods )
+			if (has_methods)
+				makeJsTag (name, JSTAG_CLASS);
+			else
 			{
 				/*
 				 * Only create variables for global scope
@@ -1439,11 +1497,9 @@ static boolean parseStatement (tokenInfo *const token, boolean is_inside_class)
 			readToken (token);
 			if ( isKeyword (token, KEYWORD_function) ||
 					isKeyword (token, KEYWORD_capital_function) ||
-					isKeyword (token, KEYWORD_object) ||
 					isKeyword (token, KEYWORD_capital_object) )
 			{
-				if ( isKeyword (token, KEYWORD_object) ||
-						isKeyword (token, KEYWORD_capital_object) )
+				if ( isKeyword (token, KEYWORD_capital_object) )
 					is_class = TRUE;
 
 				readToken (token);
@@ -1462,6 +1518,8 @@ static boolean parseStatement (tokenInfo *const token, boolean is_inside_class)
 						}
 					}
 				}
+				else if (isType (token, TOKEN_CLOSE_CURLY))
+					is_terminated = FALSE;
 			}
 		}
 		else if (isKeyword (token, KEYWORD_NONE))
@@ -1507,28 +1565,35 @@ static boolean parseStatement (tokenInfo *const token, boolean is_inside_class)
 			}
 		}
 	}
-	findCmdTerm (token);
 
-	/*
-	 * Statements can be optionally terminated in the case of
-	 * statement prior to a close curly brace as in the
-	 * document.write line below:
-	 *
-	 * function checkForUpdate() {
-	 *	   if( 1==1 ) {
-	 *		   document.write("hello from checkForUpdate<br>")
-	 *	   }
-	 *	   return 1;
-	 * }
-	 */
-	if ( ! is_terminated && isType (token, TOKEN_CLOSE_CURLY)) 
-		is_terminated = FALSE;
+	/* if we aren't already at the cmd end, advance to it and check whether
+	 * the statement was terminated */
+	if (! isType (token, TOKEN_CLOSE_CURLY) &&
+	    ! isType (token, TOKEN_SEMICOLON))
+	{
+		findCmdTerm (token);
 
+		/*
+		 * Statements can be optionally terminated in the case of
+		 * statement prior to a close curly brace as in the
+		 * document.write line below:
+		 *
+		 * function checkForUpdate() {
+		 *	   if( 1==1 ) {
+		 *		   document.write("hello from checkForUpdate<br>")
+		 *	   }
+		 *	   return 1;
+		 * }
+		 */
+		if (isType (token, TOKEN_CLOSE_CURLY))
+			is_terminated = FALSE;
+	}
 
 cleanUp:
 	vStringCopy(token->scope, saveScope);
 	deleteToken (name);
 	deleteToken (secondary_name);
+	deleteToken (method_body_token);
 	vStringDelete(saveScope);
 
 	return is_terminated;
@@ -1590,18 +1655,10 @@ static void parseJsFile (tokenInfo *const token)
 	{
 		readToken (token);
 
-		if (isType(token, TOKEN_KEYWORD))
-		{
-			switch (token->keyword)
-			{
-				case KEYWORD_function:	parseFunction (token); break;
-				default:				parseLine (token, FALSE); break;
-			}
-		}
+		if (isType (token, TOKEN_KEYWORD) && token->keyword == KEYWORD_function)
+			parseFunction (token);
 		else
-		{
 			parseLine (token, FALSE);
-		}
 	} while (TRUE);
 }
 
@@ -1619,6 +1676,7 @@ static void findJsTags (void)
 
 	ClassNames = stringListNew ();
 	FunctionNames = stringListNew ();
+	LastTokenType = TOKEN_UNDEFINED;
 
 	exception = (exception_t) (setjmp (Exception));
 	while (exception == ExceptionNone)

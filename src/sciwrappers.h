@@ -14,9 +14,9 @@
  *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *      GNU General Public License for more details.
  *
- *      You should have received a copy of the GNU General Public License
- *      along with this program; if not, write to the Free Software
- *      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *      You should have received a copy of the GNU General Public License along
+ *      with this program; if not, write to the Free Software Foundation, Inc.,
+ *      51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #ifndef GEANY_SCIWRAPPERS_H
@@ -84,7 +84,7 @@ void				sci_set_selection			(ScintillaObject *sci, gint anchorPos, gint currentP
 
 gint				sci_get_length				(ScintillaObject *sci);
 void				sci_get_text				(ScintillaObject *sci, gint len, gchar *text);
-gchar*				sci_get_contents			(ScintillaObject *sci, gint len);
+gchar*				sci_get_contents			(ScintillaObject *sci, gint buffer_len);
 void				sci_get_selected_text		(ScintillaObject *sci, gchar *text);
 gint				sci_get_selected_text_length(ScintillaObject *sci);
 gchar*				sci_get_selection_contents	(ScintillaObject *sci);

@@ -14,9 +14,9 @@
  *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *      GNU General Public License for more details.
  *
- *      You should have received a copy of the GNU General Public License
- *      along with this program; if not, write to the Free Software
- *      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *      You should have received a copy of the GNU General Public License along
+ *      with this program; if not, write to the Free Software Foundation, Inc.,
+ *      51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 /*
@@ -341,12 +341,20 @@ gboolean utils_is_short_html_tag(const gchar *tag_name)
 		"base",
 		"basefont",	/* < or not < */
 		"br",
+		"col",
+		"command",
+		"embed",
 		"frame",
 		"hr",
 		"img",
 		"input",
+		"keygen",
 		"link",
-		"meta"
+		"meta",
+		"param",
+		"source",
+		"track",
+		"wbr"
 	};
 
 	if (tag_name)

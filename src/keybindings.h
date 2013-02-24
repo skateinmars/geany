@@ -14,9 +14,9 @@
  *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *      GNU General Public License for more details.
  *
- *      You should have received a copy of the GNU General Public License
- *      along with this program; if not, write to the Free Software
- *      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *      You should have received a copy of the GNU General Public License along
+ *      with this program; if not, write to the Free Software Foundation, Inc.,
+ *      51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #ifndef GEANY_KEYBINDINGS_H
@@ -246,6 +246,8 @@ enum GeanyKeyBindingID
 	GEANY_KEYS_PROJECT_CLOSE,					/**< Keybinding. */
 	GEANY_KEYS_FORMAT_JOINLINES,				/**< Keybinding. */
 	GEANY_KEYS_GOTO_LINESTARTVISUAL,			/**< Keybinding. */
+	GEANY_KEYS_DOCUMENT_CLONE,					/**< Keybinding. */
+	GEANY_KEYS_FILE_QUIT,						/**< Keybinding. */
 	GEANY_KEYS_COUNT	/* must not be used by plugins */
 };
 

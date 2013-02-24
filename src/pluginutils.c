@@ -14,10 +14,9 @@
  *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *      GNU General Public License for more details.
  *
- *      You should have received a copy of the GNU General Public License
- *      along with this program; if not, write to the Free Software
- *      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- *      MA 02110-1301, USA.
+ *      You should have received a copy of the GNU General Public License along
+ *      with this program; if not, write to the Free Software Foundation, Inc.,
+ *      51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 /** @file pluginutils.h
@@ -63,18 +62,17 @@ void plugin_add_toolbar_item(GeanyPlugin *plugin, GtkToolItem *item)
 		gtk_toolbar_insert(toolbar, sep, pos);
 		autosep->widget = GTK_WIDGET(sep);
 
-		gtk_toolbar_insert(toolbar, item, pos + 1);
-
 		toolbar_item_ref(sep);
-		toolbar_item_ref(item);
 	}
 	else
 	{
 		pos = gtk_toolbar_get_item_index(toolbar, GTK_TOOL_ITEM(autosep->widget));
 		g_return_if_fail(pos >= 0);
-		gtk_toolbar_insert(toolbar, item, pos);
-		toolbar_item_ref(item);
 	}
+
+	gtk_toolbar_insert(toolbar, item, pos + autosep->item_count + 1);
+	toolbar_item_ref(item);
+
 	/* hide the separator widget if there are no toolbar items showing for the plugin */
 	ui_auto_separator_add_ref(autosep, GTK_WIDGET(item));
 }
@@ -339,7 +337,7 @@ static void configure_plugins(Plugin *current_plugin)
 	vbox = ui_dialog_vbox_new(GTK_DIALOG(dialog));
 	nb = gtk_notebook_new();
 	gtk_notebook_set_scrollable(GTK_NOTEBOOK(nb), TRUE);
-	gtk_container_add(GTK_CONTAINER(vbox), nb);
+	gtk_box_pack_start(GTK_BOX(vbox), nb, TRUE, TRUE, 0);
 
 	foreach_list(node, active_plugin_list)
 	{

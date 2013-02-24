@@ -14,9 +14,9 @@
  *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *      GNU General Public License for more details.
  *
- *      You should have received a copy of the GNU General Public License
- *      along with this program; if not, write to the Free Software
- *      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *      You should have received a copy of the GNU General Public License along
+ *      with this program; if not, write to the Free Software Foundation, Inc.,
+ *      51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 /*
@@ -173,7 +173,7 @@ G_MODULE_EXPORT void on_save1_activate(GtkMenuItem *menuitem, gpointer user_data
 
 	if (doc != NULL && cur_page >= 0)
 	{
-		document_save_file(doc, FALSE);
+		document_save_file(doc, ui_prefs.allow_always_save);
 	}
 }
 
@@ -413,7 +413,10 @@ G_MODULE_EXPORT void on_reload_as_activate(GtkMenuItem *menuitem, gpointer user_
 	const gchar *charset = NULL;
 
 	g_return_if_fail(doc != NULL);
-	g_return_if_fail(doc->file_name != NULL);
+
+	/* No need to reload "untitled" (non-file-backed) documents */
+	if (doc->file_name == NULL)
+		return;
 
 	if (i >= 0)
 	{
@@ -599,7 +602,7 @@ static gboolean delayed_check_disk_status(gpointer data)
 
 /* Changes window-title after switching tabs and lots of other things.
  * note: using 'after' makes Scintilla redraw before the UI, appearing more responsive */
-G_MODULE_EXPORT void on_notebook1_switch_page_after(GtkNotebook *notebook, GtkNotebookPage *page,
+G_MODULE_EXPORT void on_notebook1_switch_page_after(GtkNotebook *notebook, gpointer page,
 		guint page_num, gpointer user_data)
 {
 	GeanyDocument *doc;
@@ -638,7 +641,7 @@ G_MODULE_EXPORT void on_notebook1_switch_page_after(GtkNotebook *notebook, GtkNo
 }
 
 
-G_MODULE_EXPORT void on_tv_notebook_switch_page(GtkNotebook *notebook, GtkNotebookPage *page,
+G_MODULE_EXPORT void on_tv_notebook_switch_page(GtkNotebook *notebook, gpointer page,
 		guint page_num, gpointer user_data)
 {
 	/* suppress selection changed signal when switching to the open files list */
@@ -646,7 +649,7 @@ G_MODULE_EXPORT void on_tv_notebook_switch_page(GtkNotebook *notebook, GtkNotebo
 }
 
 
-G_MODULE_EXPORT void on_tv_notebook_switch_page_after(GtkNotebook *notebook, GtkNotebookPage *page,
+G_MODULE_EXPORT void on_tv_notebook_switch_page_after(GtkNotebook *notebook, gpointer page,
 		guint page_num, gpointer user_data)
 {
 	ignore_callback = FALSE;
@@ -1168,7 +1171,7 @@ G_MODULE_EXPORT void on_comments_function_activate(GtkMenuItem *menuitem, gpoint
 	/* symbols_get_current_function returns -1 on failure, so sci_get_position_from_line
 	 * returns the current position, so it should be safe */
 	line = symbols_get_current_function(doc, &cur_tag);
-	pos = sci_get_position_from_line(doc->editor->sci, line - 1);
+	pos = sci_get_position_from_line(doc->editor->sci, line);
 
 	text = templates_get_template_function(doc, cur_tag);
 
@@ -2083,9 +2086,15 @@ G_MODULE_EXPORT void on_reflow_lines_block1_activate(GtkMenuItem *menuitem, gpoi
 }
 
 
-G_MODULE_EXPORT void on_transpose_current_line1_activate(GtkMenuItem *menuitem, gpointer user_data)
+G_MODULE_EXPORT void on_move_lines_up1_activate(GtkMenuItem *menuitem, gpointer user_data)
 {
-	keybindings_send_command(GEANY_KEY_GROUP_EDITOR, GEANY_KEYS_EDITOR_TRANSPOSELINE);
+	keybindings_send_command(GEANY_KEY_GROUP_EDITOR, GEANY_KEYS_EDITOR_MOVELINEUP);
+}
+
+
+G_MODULE_EXPORT void on_move_lines_down1_activate(GtkMenuItem *menuitem, gpointer user_data)
+{
+	keybindings_send_command(GEANY_KEY_GROUP_EDITOR, GEANY_KEYS_EDITOR_MOVELINEDOWN);
 }
 
 

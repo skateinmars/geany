@@ -14,10 +14,9 @@
  *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *      GNU General Public License for more details.
  *
- *      You should have received a copy of the GNU General Public License
- *      along with this program; if not, write to the Free Software
- *      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- *      MA 02110-1301, USA.
+ *      You should have received a copy of the GNU General Public License along
+ *      with this program; if not, write to the Free Software Foundation, Inc.,
+ *      51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 /* Sidebar file browser plugin. */
@@ -716,9 +715,8 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer dat
 		return TRUE;
 	}
 
-	if ((event->keyval == GDK_Up ||
-		event->keyval == GDK_KP_Up) &&
-		(event->state & GDK_MOD1_MASK))	/* FIXME: Alt-Up doesn't seem to work! */
+	if (( (event->keyval == GDK_Up || event->keyval == GDK_KP_Up) && (event->state & GDK_MOD1_MASK)) || /* FIXME: Alt-Up doesn't seem to work! */
+		(event->keyval == GDK_BackSpace) )
 	{
 		on_go_up();
 		return TRUE;
@@ -1110,7 +1108,7 @@ void plugin_init(GeanyData *data)
 		GTK_SCROLLED_WINDOW(scrollwin),
 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_container_add(GTK_CONTAINER(scrollwin), file_view);
-	gtk_container_add(GTK_CONTAINER(file_view_vbox), scrollwin);
+	gtk_box_pack_start(GTK_BOX(file_view_vbox), scrollwin, TRUE, TRUE, 0);
 
 	/* load settings before file_view "realize" callback */
 	load_settings();

@@ -517,7 +517,7 @@ void tm_workspace_recreate_tags_array(void)
 }
 
 gboolean tm_workspace_update(TMWorkObject *workspace, gboolean force
-  , gboolean recurse, gboolean __unused__ update_parent)
+  , gboolean recurse, gboolean UNUSED update_parent)
 {
 	guint i;
 	gboolean update_tags = force;
@@ -733,30 +733,37 @@ tm_workspace_find_scoped (const char *name, const char *scope, gint type,
 
 
 const TMTag *
-tm_get_current_function (GPtrArray * file_tags, const gulong line)
+tm_get_current_tag (GPtrArray * file_tags, const gulong line, const guint tag_types)
 {
-	GPtrArray *const local = tm_tags_extract (file_tags, tm_tag_function_t);
+	GPtrArray *const local = tm_tags_extract (file_tags, tag_types);
+	TMTag *matching_tag = NULL;
 	if (local && local->len)
 	{
 		guint i;
-		TMTag *tag, *function_tag = NULL;
-		gulong function_line = 0;
+		gulong matching_line = 0;
 		glong delta;
 
 		for (i = 0; (i < local->len); ++i)
 		{
-			tag = TM_TAG (local->pdata[i]);
+			TMTag *tag = TM_TAG (local->pdata[i]);
 			delta = line - tag->atts.entry.line;
-			if (delta >= 0 && (gulong)delta < line - function_line)
+			if (delta >= 0 && (gulong)delta < line - matching_line)
 			{
-				function_tag = tag;
-				function_line = tag->atts.entry.line;
+				matching_tag = tag;
+				matching_line = tag->atts.entry.line;
 			}
 		}
-		g_ptr_array_free (local, TRUE);
-		return function_tag;
 	}
-	return NULL;
+	if (local)
+		g_ptr_array_free (local, TRUE);
+	return matching_tag;
+}
+
+
+const TMTag *
+tm_get_current_function (GPtrArray * file_tags, const gulong line)
+{
+	return tm_get_current_tag (file_tags, line, tm_tag_function_t | tm_tag_method_t);
 }
 
 
